@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<sdf>
+    <world name="w">
+        <model name="m">
+            <link name="root_link">
+                <pose>1 2 3 90 0 0</pose>
+            </link>
+            <link name="child_link">
+                <pose>1 2 3 90 0 0</pose>
+            </link>
+            <joint name='j' type='revolute'>
+                <parent>root_link</parent>
+                <child>child_link</child>
+                <axis>
+                    <xyz>1 0 0</xyz>
+                </axis>
+            </joint>
+        </model>
+    </world>
+</sdf>
+

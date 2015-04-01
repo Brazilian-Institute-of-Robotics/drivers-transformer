@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<sdf>
+    <world name="world_name">
+        <model name="root_model_name" />
+    </world>
+</sdf>
+
