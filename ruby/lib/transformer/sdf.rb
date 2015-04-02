@@ -3,42 +3,34 @@ require 'sdf'
 module Transformer
     module SDF
         # Load a SDF model or file and convert it into a transformer configuration
-        def self.load(model_name_or_path, &producer_resolver)
-            sdf = ::SDF::Root.load(model_name_or_path)
-            load_from_sdf(sdf, &producer_resolver)
-        end
-
-        # Create a transformer configuration from SDF model
-        #
-        # @param [SDF::Element] the root of the SDF data that should be used
-        # @return [Transformer::Configuration]
-        def self.load_from_sdf(sdf, &producer_resolver)
-            result = Transformer::Configuration.new
-            parse_sdf(result, sdf, [], &producer_resolver)
-            result
+        def load_sdf(model, &producer_resolver)
+            if model.respond_to?(:to_str)
+                model = ::SDF::Root.load(model)
+            end
+            parse_sdf(model, [], &producer_resolver)
         end
 
         # @api private
-        def self.parse_sdf(conf, sdf, prefix, &producer_resolver)
+        def parse_sdf(sdf, prefix, &producer_resolver)
             if sdf.respond_to?(:each_world)
                 sdf.each_world do |w|
-                    conf.frames w.full_name
-                    parse_sdf(conf, w, prefix + [w.name], &producer_resolver)
+                    frames w.full_name
+                    parse_sdf(w, prefix + [w.name], &producer_resolver)
                 end
             end
             if sdf.respond_to?(:each_model)
                 sdf.each_model do |m|
-                    conf.frames m.full_name
+                    frames m.full_name
 
                     if m.parent.name
                         if m.static?
-                            conf.static_transform(*m.pose, m.full_name => m.parent.full_name)
+                            static_transform(*m.pose, m.full_name => m.parent.full_name)
                         else
-                            conf.example_transform(*m.pose, m.full_name => m.parent.full_name)
+                            example_transform(*m.pose, m.full_name => m.parent.full_name)
                         end
                     end
 
-                    parse_sdf(conf, m, prefix + [m.name], &producer_resolver)
+                    parse_sdf(m, prefix + [m.name], &producer_resolver)
                 end
             end
             if sdf.respond_to?(:each_link)
@@ -54,26 +46,24 @@ module Transformer
 
                     parent = parent.full_name
                     child  = child.full_name
-                    if producer_resolver && (p = producer_resolver.call(parent, child))
-                        conf.dynamic_transform p, child => parent
+                    joint = j.full_name
+                    static_transform(*j.pose, joint => child)
+                    if producer_resolver && (p = producer_resolver.call(parent, joint))
+                        dynamic_transform p, joint => parent
                     end
 
-                    axis = j.axis
-                    axis_v = axis.xyz
-                    upper = axis.limit.upper || 0
-                    lower = axis.limit.lower || 0
-                    if j.type == 'revolute'
-                        v, q = Eigen::Vector3.Zero, Eigen::Quaternion.from_angle_axis((upper + lower) / 2, axis_v)
-                    else
-                        v, q = xyz.normalize * (upper + lower) / 2, Eigen::Quaternion.Identity
-                    end
-                    conf.example_transform v, q, child => parent
+                    axis_limit = j.axis.limit
+                    upper = axis_limit.upper || 0
+                    lower = axis_limit.lower || 0
+                    v, q = j.transform_for((upper + lower) / 2)
+                    example_transform v, q, joint => parent
                 end
 
                 root_links.each_value do |l|
-                    conf.static_transform(*l.pose, l.full_name => l.parent.full_name)
+                    static_transform(*l.pose, l.full_name => l.parent.full_name)
                 end
             end
         end
     end
+    Transformer::Configuration.include SDF
 end

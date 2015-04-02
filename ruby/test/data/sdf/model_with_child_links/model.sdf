@@ -10,10 +10,15 @@
                 <pose>1 2 3 90 0 0</pose>
             </link>
             <joint name='j' type='revolute'>
+                <pose>1 2 3 0 0 90</pose>
                 <parent>root_link</parent>
                 <child>child_link</child>
                 <axis>
                     <xyz>1 0 0</xyz>
+                    <limit>
+                        <upper>90</upper>
+                        <lower>0</lower>
+                    </limit>
                 </axis>
             </joint>
         </model>
