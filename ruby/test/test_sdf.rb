@@ -48,8 +48,8 @@ module Transformer
         it "creates dynamic transforms between root links and child links if a transformation producer is given" do
             recorder = flexmock
             recorder.should_receive(:call).with('w.m.j').once
-            conf.load_sdf('model://model_with_child_links') do |joint_name|
-                recorder.call(joint_name)
+            conf.load_sdf('model://model_with_child_links') do |joint|
+                recorder.call(joint.full_name)
                 'producer'
             end
             tr = conf.transformation_for('w.m.j_post', 'w.m.j_pre')
