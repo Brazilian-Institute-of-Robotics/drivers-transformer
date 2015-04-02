@@ -4,7 +4,7 @@
     <world name="w">
         <model name="m">
             <link name="root_link">
-                <pose>1 2 3 0 0 90</pose>
+                <pose>1 2 3 0 0 2</pose>
             </link>
         </model>
     </world>
