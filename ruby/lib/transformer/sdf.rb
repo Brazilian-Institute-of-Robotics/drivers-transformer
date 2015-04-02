@@ -54,6 +54,7 @@ module Transformer
                     child  = child.full_name
                     joint_pre  = "#{j.full_name}_pre"
                     joint_post = "#{j.full_name}_post"
+                    register_joint(joint_post, joint_pre, j)
                     static_transform(joint2child, joint_post => child)
                     static_transform(joint2parent, joint_pre => parent)
                     if producer_resolver && (p = producer_resolver.call(j))
