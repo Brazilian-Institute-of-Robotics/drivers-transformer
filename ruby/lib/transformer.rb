@@ -416,11 +416,20 @@ module Transformer
         attr_accessor :frames
         attr_accessor :checker
 
+        # A set of joints that are part of this configuration
+        #
+        # This is filled by side-loaders to export it to use, but it is not used
+        # by the transformer code itself
+        #
+        # @return [(String,String,Object)]
+        attr_reader :joints
+
         def initialize(checker = ConfigurationChecker.new)
             @transforms = Hash.new
             @frames = Set.new
             @example_transforms = Hash.new
             @checker = checker
+            @joints = Array.new
         end
 
         def initialize_copy(old)
@@ -428,6 +437,7 @@ module Transformer
             @frames = Set.new
             @example_transforms = Hash.new
             @checker = old.checker
+            @joints = Array.new
             merge(old)
         end
 
@@ -489,6 +499,7 @@ module Transformer
             transforms.merge!(conf.transforms.map_value { |_, v| v.dup })
             example_transforms.merge!(conf.example_transforms.map_value { |_, v| v.dup })
             @frames |= conf.frames
+            joints |= conf.joints
             self
         end
 
@@ -713,6 +724,35 @@ module Transformer
         # @yieldparam [StaticTransform] trsf
         def each_example_transform(&block)
             example_transforms.each_value(&block)
+        end
+
+        # Tests whether some joints are registered
+        def has_joints?
+            !joints.empty?
+        end
+
+        # Registers a joint object
+        #
+        # @param [String] from the transformation's source frame
+        # @param [String] to the transformation's target frame
+        # @param [[#name,#transform_for]] joint the joint object. It should
+        #   allow to compute the joint transformation (with transform_for) and to
+        #   return its name
+        # @return [void]
+        def register_joint(from, to, joint)
+            joints << [from, to, joint]
+        end
+
+        # Enumerates the joints registered on this configuration
+        #
+        # @yieldparam [String] from the transformation's source frame
+        # @yieldparam [String] to the transformation's target frame
+        # @yieldparam [[#name,#transform_for]] joint the joint object. It should
+        #   allow to compute the joint transformation (with transform_for) and to
+        #   return its name
+        # @return [void]
+        def each_joint(&block)
+            joints.each(&block)
         end
 
         def pretty_print(pp)
