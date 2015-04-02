@@ -44,19 +44,34 @@ module Transformer
                     child  = j.child_link
                     root_links.delete(child.name)
 
+                    parent2model = parent.pose
+                    child2model  = child.pose
+                    joint2child  = j.pose
+                    child2parent = parent2model.inverse * child2model
+                    joint2parent = child2parent * joint2child
+
                     parent = parent.full_name
                     child  = child.full_name
-                    joint = j.full_name
-                    static_transform(*j.pose, joint => child)
-                    if producer_resolver && (p = producer_resolver.call(parent, joint))
-                        dynamic_transform p, joint => parent
+                    joint_pre  = "#{j.full_name}_pre"
+                    joint_post = "#{j.full_name}_post"
+                    static_transform(joint2child, joint_post => child)
+                    static_transform(joint2parent, joint_pre => parent)
+                    if producer_resolver && (p = producer_resolver.call(j.full_name))
+                        dynamic_transform p, joint_post => joint_pre
                     end
 
                     axis_limit = j.axis.limit
                     upper = axis_limit.upper || 0
                     lower = axis_limit.lower || 0
-                    v, q = j.transform_for((upper + lower) / 2)
-                    example_transform v, q, joint => parent
+                    axis = j.axis.xyz
+                    if j.axis.use_parent_model_frame?
+                        # The axis is expressed in the parent model frame ...
+                        # Convert to joint frame
+                        joint2model = (joint2child * child2model)
+                        axis = joint2model.rotation.inverse * axis
+                    end
+                    post2pre = j.transform_for((upper + lower) / 2, axis)
+                    example_transform post2pre, joint_post => joint_pre
                 end
 
                 root_links.each_value do |l|
