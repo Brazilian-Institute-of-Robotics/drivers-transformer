@@ -20,13 +20,13 @@ module Transformer
             end
             if sdf.respond_to?(:each_model)
                 sdf.each_model do |m|
-                    frames m.full_name
+                    frames m.name
 
                     if m.parent.name
                         if m.static?
-                            static_transform(*m.pose, m.full_name => m.parent.full_name)
+                            static_transform(*m.pose, m.name => m.parent.full_name)
                         else
-                            example_transform(*m.pose, m.full_name => m.parent.full_name)
+                            example_transform(*m.pose, m.name => m.parent.full_name)
                         end
                     end
 
@@ -50,10 +50,10 @@ module Transformer
                     child2parent = parent2model.inverse * child2model
                     joint2parent = child2parent * joint2child
 
-                    parent = parent.full_name
-                    child  = child.full_name
-                    joint_pre  = "#{j.full_name}_pre"
-                    joint_post = "#{j.full_name}_post"
+                    parent = "#{sdf.name}::#{parent.name}"
+                    child  = "#{sdf.name}::#{child.name}"
+                    joint_pre  = "#{sdf.name}::#{j.name}_pre"
+                    joint_post = "#{sdf.name}::#{j.name}_post"
                     register_joint(joint_post, joint_pre, j)
                     static_transform(joint2child, joint_post => child)
                     static_transform(joint2parent, joint_pre => parent)
@@ -76,7 +76,7 @@ module Transformer
                 end
 
                 root_links.each_value do |l|
-                    static_transform(*l.pose, l.full_name => l.parent.full_name)
+                    static_transform(*l.pose, "#{sdf.name}::#{l.name}" => sdf.name)
                 end
             end
         end
