@@ -111,8 +111,13 @@ module Transformer
                         raise TransformationPortNotFound.new(producer_task, dyn.from, dyn.to)
                     end
                 end
-                producer.select_port_for_transform(out_port, dyn.from, dyn.to)
                 out_port.connect_to task.dynamic_transformations_port
+                begin
+                    producer.select_port_for_transform(out_port, dyn.from, dyn.to)
+                rescue InvalidFrameSelection => e
+                    e.producer_for << task
+                    raise
+                end
             end
 
             # Manually propagate device information on the new task

@@ -11,10 +11,14 @@ module Transformer
         # List of [task, port] pairs that give information about why we are
         # updating the frame
         attr_reader :related_ports
+        # List of dynamic transformations, and their recipients, that 'task' is
+        # used as a producer for
+        attr_reader :producer_for
 
         def initialize(task, frame)
             @task, @frame = task, frame
             @related_ports = compute_related_ports
+            @producer_for  = Array.new
         end
 
         def compute_related_ports
@@ -45,10 +49,47 @@ module Transformer
             result
         end
 
-        def pretty_print_related_ports(pp)
-            pp.seplist(related_ports) do |src|
-                task, port_name, info = *src
-                pp.text "#{src[0]}: #{src[1]}"
+        def pretty_print_common_info(pp)
+            pp.breakable
+            pp.text "Transformer is configured as follows:"
+            pp.nest(2) do
+                pp.breakable
+                task.transformer.pretty_print(pp)
+            end
+            if !task.requirements.frame_mappings.empty?
+                pp.breakable
+                pp.text "Requirements specify:"
+                pp.nest(2) do
+                    pp.breakable
+                    pp.seplist(task.requirements.frame_mappings) do |mapping|
+                        local_name, global_name = *mapping
+                        pp.text "#{local_name}: #{global_name}"
+                    end
+                end
+            end
+            if !related_ports.empty?
+                pp.breakable
+                pp.text "Related ports:"
+                pp.nest(2) do
+                    pp.breakable
+                    pp.seplist(related_ports) do |src|
+                        task, port_name, info = *src
+                        pp.text "#{src[0]}: #{src[1]}"
+                        if info
+                            pp.text " (#{info})"
+                        end
+                    end
+                end
+            end
+            if !producer_for.empty?
+                pp.breakable
+                pp.text "The task is being used as a producer for:"
+                pp.nest(2) do
+                    pp.breakable
+                    pp.seplist(producer_for) do |task|
+                        task.pretty_print(pp)
+                    end
+                end
             end
         end
     end
@@ -68,15 +109,11 @@ module Transformer
         end
 
         def pretty_print(pp)
-            pp.text "conflicting frames selected for #{task}.#{frame} (#{current_frame} != #{new_frame}): #{message}"
-            if !related_ports.empty?
-                pp.breakable
-                pp.text "related ports:"
-                pp.nest(2) do
-                    pp.breakable
-                    pretty_print_related_ports(pp)
-                end
-            end
+            pp.text "conflicting frames selected for #{frame} (#{current_frame} != #{new_frame})"
+            pp.breakable
+            pp.text "on "
+            task.pretty_print(pp)
+            pretty_print_common_info(pp)
         end
     end
 
