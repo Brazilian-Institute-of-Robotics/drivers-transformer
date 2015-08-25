@@ -35,10 +35,12 @@ module Transformer
                     end
                 end
                 # Special case: dynamic_transformations
-                task.dynamic_transformations_port.each_concrete_connection do |out_port, _|
-                    transform = out_port.produced_transformation
-                    if transform && transform.from && transform.to
-                        self_producers[[transform.from, transform.to]] = out_port.model.orogen_model
+                if dyn_port = task.find_port('dynamic_transformations')
+                    dyn_port.each_concrete_connection do |out_port, _|
+                        transform = out_port.produced_transformation
+                        if transform && transform.from && transform.to
+                            self_producers[[transform.from, transform.to]] = out_port.model.orogen_model
+                        end
                     end
                 end
 
@@ -111,12 +113,20 @@ module Transformer
                         raise TransformationPortNotFound.new(producer_task, dyn.from, dyn.to)
                     end
                 end
-                out_port.connect_to task.dynamic_transformations_port
+
+                in_ports = task.find_all_input_ports_for_transform(dyn.from, dyn.to)
                 begin
                     producer.select_port_for_transform(out_port, dyn.from, dyn.to)
                 rescue InvalidFrameSelection => e
                     e.producer_for << task
                     raise
+                end
+
+                if dyn_in_port = task.find_port('dynamic_transformations')
+                    in_ports << dyn_in_port
+                end
+                in_ports.each do |p|
+                    out_port.connect_to p
                 end
             end
 

@@ -40,5 +40,13 @@ module Transformer
 
             return nil
         end
+
+        def find_all_input_ports_for_transform(from, to)
+            each_transform_input.map do |port, port_from, port_to|
+                if port_from == from && port_to == to
+                    port
+                end
+            end.compact
+        end
     end
 end

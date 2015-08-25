@@ -33,6 +33,24 @@ module Transformer
             end
         end
 
+        # Yields the task input ports that produce a transformation, along with
+        # the selected frames for this port
+        #
+        # The selected frames might be nil if no transformation has been
+        # selected
+        def each_transform_input
+            return enum_for(:each_transform_input) if !block_given?
+            if !(tr = model.transformer)
+                return
+            end
+
+            model.each_transform_input do |port, from, to|
+                from = selected_frames[from]
+                to   = selected_frames[to]
+                yield(port.bind(self), from, to)
+            end
+        end
+
         # Yields the task output ports that produce a transformation, along with
         # the selected frames for this port
         #
