@@ -14,7 +14,7 @@ if ENV['TEST_ENABLE_COVERAGE'] == '1'
 end
 
 require 'transformer'
-require 'flexmock/test_unit'
+require 'flexmock/minitest'
 require 'minitest/spec'
 
 if ENV['TEST_ENABLE_PRY'] != '0'
