@@ -15,7 +15,7 @@
     <license>LGPL v2 or later</license>
 
     <depend package="drivers/aggregator" />
-    <depend package="tools/ruby_sdf" optional="1"/>
+    <depend package="control/ruby_sdformat" optional="1" />
     <tags>stable</tags>
 </package>
 
