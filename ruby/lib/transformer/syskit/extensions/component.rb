@@ -35,26 +35,11 @@ module Transformer
             super if defined? super
         end
 
-        # Selects +selected_frame+ for the task's +frame_name+
-        #
-        # @throws FrameSelectionConflict if a different frame was already selected
-        def select_frame(frame_name, selected_frame)
-            if current = selected_frames[frame_name]
-                if current != selected_frame
-                    raise FrameSelectionConflict.new(self, frame_name, current, selected_frame), "cannot select both #{current} and #{selected_frame} for the frame #{frame_name} of #{self}"
-                end
-            else
-                selected_frames[frame_name] = selected_frame
-            end
+        def select_frame(frame_name, selected_frame, validate: true)
+            raise NotImplementedError, "cannot select frames on a composition"
         end
 
-        # Selects a set of frame mappings
-        #
-        # See #select_frame
         def select_frames(mappings)
-            mappings.each do |name, selected_frame|
-                select_frame(name, selected_frame)
-            end
         end
 
         # Returns true if the specified transformation is provided through a

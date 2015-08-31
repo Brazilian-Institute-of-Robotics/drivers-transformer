@@ -3,6 +3,27 @@ module Transformer
     module TaskContextExtension
         include ConcreteComponentExtension
 
+        # Selects +selected_frame+ for the task's +frame_name+
+        #
+        # @raise FrameSelectionConflict if a different frame was already selected
+        def select_frame(frame_name, selected_frame, validate: true)
+            if validate
+                if !(tr = model.transformer)
+                    raise ArgumentError, "expecting to select frame '#{selected_frame}' for #{frame_name}, but #{self} does not use transformations"
+                elsif !tr.has_frame?(frame_name)
+                    raise ArgumentError, "expecting to select frame '#{selected_frame}' for #{frame_name}, but #{self} has no such frame"
+                end
+            end
+
+            if current = selected_frames[frame_name]
+                if current != selected_frame
+                    raise FrameSelectionConflict.new(self, frame_name, current, selected_frame), "cannot select both #{current} and #{selected_frame} for the frame #{frame_name} of #{self}"
+                end
+            else
+                selected_frames[frame_name] = selected_frame
+            end
+        end
+
         # The set of static transformations that should be provided to the
         # component at configuration time
         attribute(:static_transforms) { Array.new }
@@ -134,15 +155,19 @@ module Transformer
         # Raises StaticFrameChangeError if 'local' is a static frame (i.e. no
         # property exists to change it) and 'global' is not its hardcoded value.
         def select_frames(selection)
-            if tr = self.model.transformer
-                selection.each do |local_frame, global_frame|
-                    # If the frame is not configurable, raise
-                    if tr.static?(local_frame) && local_frame != global_frame
-                        raise StaticFrameChangeError.new(self, local_frame, global_frame), "cannot select #{global_frame} for the local frame #{local_frame} in #{self}, as the component does not support configuring that frame"
-                    end
+            return if !(tr = model.transformer)
+            selection.each do |local_frame, global_frame|
+                # If the frame is not configurable, raise
+                if tr.static?(local_frame) && local_frame != global_frame
+                    raise StaticFrameChangeError.new(self, local_frame, global_frame), "cannot select #{global_frame} for the local frame #{local_frame} in #{self}, as the component does not support configuring that frame"
                 end
             end
-            super
+
+            selection.each do |name, selected_frame|
+                if tr.has_frame?(name)
+                    select_frame(name, selected_frame, validate: false)
+                end
+            end
         end
 
         # Applies the selected frames to the task properties
