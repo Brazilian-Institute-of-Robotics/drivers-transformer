@@ -36,6 +36,30 @@ module Transformer
             return nil
         end
 
+        def find_all_input_ports_for_transform(from, to)
+            each_transform_input.map do |port, port_from, port_to|
+                if port_from == from && port_to == to
+                    port
+                end
+            end.compact
+        end
+
+        def each_transform_input
+            return enum_for(:each_transform_input) if !block_given?
+            each_input_port do |port|
+                next if !Transformer.transform_port?(port)
+
+                self.each_concrete_input_connection(port) do |source_task, source_port, sink_port, policy|
+                    return if !(tr = source_task.model.transformer)
+                    if associated_transform = tr.find_transform_of_port(source_port)
+                        from = source_task.selected_frames[associated_transform.from]
+                        to   = source_task.selected_frames[associated_transform.to]
+                        yield(port, from, to)
+                    end
+                end
+            end
+        end
+
         def each_transform_output
             return enum_for(:each_transform_output) if !block_given?
             each_output_port do |port|

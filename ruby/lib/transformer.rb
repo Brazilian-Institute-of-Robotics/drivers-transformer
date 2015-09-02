@@ -391,6 +391,9 @@ module Transformer
         end
 
         def check_producer(producer)
+            if !producer
+                raise ArgumentError, "cannot have a nil producer"
+            end
             @producer_check.call(producer)
         end
     end
