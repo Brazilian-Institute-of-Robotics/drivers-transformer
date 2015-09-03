@@ -1,170 +1,174 @@
 require 'transformer/syskit/test'
 
 describe Transformer::SyskitPlugin do
+    attr_reader :transform_producer_m, :data_producer_m, :data_consumer_m
+    attr_reader :cmp_m
     before do
-        Syskit::RobyApp::Plugin.start_local_process_server
-        Syskit::RobyApp::Plugin.connect_to_local_process_server
-        Roby.app.using_task_library 'test_transformer'
-        ::Robot.logger.level = Logger::WARN
-        Syskit.conf.use_deployments_from "test_transformer"
+        Roby.app.import_types_from 'base'
+        Roby.app.import_types_from 'transformer'
+        Syskit.conf.transformer_warn_about_unset_frames = false
 
-        @handler_ids = Syskit::RobyApp::Plugin.plug_engine_in_roby(engine)
+        @transform_producer_m = Syskit::TaskContext.new_submodel name: 'TransformProducer' do
+            property 'producer_object_frame', '/std/string'
+            property 'producer_world_frame', '/std/string'
+            output_port 'transform', '/base/samples/RigidBodyState'
+            transformer do
+                transform_output 'transform', 'producer_object' => 'producer_world'
+                max_latency 0.1
+            end
+        end
+        @data_producer_m = Syskit::TaskContext.new_submodel name: 'DataProducer' do
+            property 'producer_object_frame', '/std/string'
+            property 'producer_world_frame', '/std/string'
+            output_port 'samples', '/double'
+            output_port 'transform_samples', '/base/samples/RigidBodyState'
+            transformer do
+                associate_frame_to_ports 'producer_object', 'samples'
+                transform_output 'transform_samples',
+                    'producer_object' => 'producer_world'
+                max_latency 0.1
+            end
+        end
+        @data_consumer_m = Syskit::TaskContext.new_submodel name: 'DataConsumer' do
+            property 'object_frame', '/std/string'
+            property 'world_frame', '/std/string'
+            input_port 'samples', '/double'
+            input_port 'transform_samples', '/base/samples/RigidBodyState'
+            transformer do
+                transform 'object', 'world'
+                associate_frame_to_ports 'object', 'samples'
+                transform_input 'transform_samples',
+                    'object' => 'world'
+                max_latency 0.1
+            end
+        end
+        @cmp_m = Syskit::Composition.new_submodel
     end
 
-    def verify_simple_setup(mission)
-        deploy(mission) do
-            # Verify that the selection went well
-            device_task  = mission.device_child
-            process_task = mission.processor_child
-            assert_equal "output_test", device_task.selected_frames["dev"],
-                "currently selected frames in #{device_task}: #{device_task.selected_frames.inspect}"
-            assert_equal "output_test",
-                process_task.selected_frames["body"]
-            assert_equal "global_output",
-                process_task.selected_frames["output"]
-        end
+    it "assigns the required static transformations" do
+        task_m = self.data_consumer_m.
+            use_frames('object' => 'object_global', 'world' => 'world_global').
+            transformer do
+                static_transform Eigen::Vector3.new(1, 0, 0),
+                    "object_global" => "world_global"
+            end
+        task = syskit_stub_deploy_and_configure(task_m)
 
-        device_task, process_task = mission.device_child, mission.processor_child
-        assert_event_emission device_task.start_event
-        assert_event_emission process_task.start_event
-            
-        assert_equal "output_test", process_task.orocos_task.body_frame
-        assert_equal "global_output", process_task.orocos_task.output_frame
+        statics = task.orocos_task.static_transformations
+        assert_equal 1, statics.size
+        assert_equal Eigen::Vector3.new(1, 0, 0), statics.to_a.first.position
+        assert_equal Eigen::Quaternion.Identity, statics.to_a.first.orientation
     end
 
-    def simple_setup(&block)
-        test_m = Syskit::Composition.new_submodel :name => 'Test' do
-            add TestTransformer::Device, :as => "device"
-            add TestTransformer::BasicBehaviour, :as => "processor"
-            device_child.connect_to processor_child, :type => :data
-        end
+    it "assigns the frame name properties" do
+        task_m = self.data_consumer_m.
+            use_frames('object' => 'object_global', 'world' => 'world_global').
+            transformer do
+                static_transform Eigen::Vector3.new(1, 0, 0),
+                    "object_global" => "world_global"
+            end
+        task = syskit_stub_deploy_and_configure(task_m)
 
-        plan.add_mission(
-            mission = test_m.
-                use(TestTransformer::Device.use_frames("dev" => "output_test")).
-                use_frames("output" => "global_output").
-                transformer(&block).as_plan)
-
-        mission = mission.as_service
-        verify_simple_setup(mission)
-        mission
+        assert_equal 'object_global', task.orocos_task.object_frame
+        assert_equal 'world_global', task.orocos_task.world_frame
     end
 
-    # Sets up a network with one device and one processor, checks that the
-    # frames are set right and that the task is configured properly
-    it "should assign the required static transformations" do
-        mission = simple_setup do
-            static_transform Eigen::Vector3.new(1, 0, 0),
-                "output_test" => "global_output"
-        end
+    it "propagates data port frame information forward in the dataflow" do
+        cmp_m.add self.data_producer_m, as: 'producer'
+        cmp_m.add self.data_consumer_m, as: 'consumer'
+        cmp_m.producer_child.samples_port.connect_to cmp_m.consumer_child.samples_port
 
-        execute do
-            device_task = mission.device_child
-            process_task = mission.processor_child
-
-            statics = process_task.orocos_task.static_transformations
-            assert_equal 1, statics.size
-            assert_equal Eigen::Vector3.new(1, 0, 0), statics.to_a.first.position
-            assert_equal Eigen::Quaternion.Identity, statics.to_a.first.orientation
-        end
+        cmp_m = self.cmp_m.
+            use_frames('producer_object' => 'object_global',
+                'producer_world' => 'world_global',
+                'world' => 'world_global').
+            transformer do
+                static_transform Eigen::Vector3.new(1, 0, 0),
+                    "object_global" => "world_global"
+            end
+        cmp = syskit_stub_and_deploy(cmp_m)
+        assert_equal Hash['world' => 'world_global', 'object' => 'object_global'],
+            cmp.consumer_child.selected_frames
     end
 
-    def assert_connection_exists(source_task, source_port, sink_task, sink_port)
-        assert(source_task.connected_to?(source_port, sink_task.to_task, sink_port))
+    it "propagates transform port frame information forward in the dataflow" do
+        cmp_m = Syskit::Composition.new_submodel
+        cmp_m.add self.data_producer_m, as: 'producer'
+        cmp_m.add self.data_consumer_m, as: 'consumer'
+        cmp_m.producer_child.transform_samples_port.connect_to cmp_m.consumer_child.transform_samples_port
+
+        cmp_m = cmp_m.
+            use_frames('producer_object' => 'object_global',
+                       'producer_world' => 'world_global').
+            transformer do
+                static_transform Eigen::Vector3.new(1, 0, 0),
+                    "object_global" => "world_global"
+            end
+        cmp = syskit_stub_and_deploy(cmp_m)
+        assert_equal Hash['world' => 'world_global', 'object' => 'object_global'],
+            cmp.consumer_child.selected_frames
     end
 
+    it "instanciates dynamic producers" do
+        transform_producer_m = self.transform_producer_m
+        syskit_stub(transform_producer_m)
+        task_m = self.data_consumer_m.
+            use_frames('object' => 'object_global', 'world' => 'world_global').
+            transformer do
+                dynamic_transform transform_producer_m,
+                    "object_global" => "world_global"
+            end
 
-    # Sets up a network with one device and one processor, checks that the
-    # frames are set right, that the task is configured properly and that the
-    # dynamic frame producer is connected as it should
-    it "should instanciate dynamic producers as required" do
-        device_m = Syskit::Device.new_submodel
-        TestTransformer::ConfigurableTransformProducer.driver_for device_m, :as => 'driver'
-        dev = robot.device(device_m, :as => 'dev').period(0.1)
-            
-        mission = simple_setup do
-            dynamic_transform TestTransformer::ConfigurableTransformProducer.with_arguments("driver_dev" => dev).use_deployments("configurable_transform_producer"),
-                "output_test" => "global_output"
-        end
-
-        execute do
-            device_task  = mission.device_child
-            process_task = mission.processor_child
-            producer_task = process_task.transformer_output_test2global_output_child
-
-            assert_connection_exists(producer_task, "transform", process_task, "dynamic_transformations")
-            assert_equal "output_test", producer_task.orocos_task.from_frame
-            assert_equal "global_output", producer_task.orocos_task.to_frame
-        end
+        task = syskit_stub_and_deploy(task_m)
+        producer = task.child_from_role("transformer_object_global2world_global")
+        assert_kind_of transform_producer_m, producer
+        assert_equal Hash['producer_object' => 'object_global', 'producer_world' => 'world_global'],
+            producer.selected_frames
+        assert producer.transform_port.connected_to?(task.dynamic_transformations_port)
     end
 
-    # Sets up a network with one device and one processor, checks that the
-    # frames are set right, that the task is configured properly and that the
-    # dynamic frame producer is connected as it should
-    it "should recognize when dynamic producers are connected to dedicated ports" do
-        composition_m = Syskit::Composition.new_submodel :name => 'Test' do
-            add TestTransformer::Device, :as => "device"
-            add TestTransformer::BasicBehaviour, :as => "processor"
-            add TestTransformer::ConfigurableTransformProducer, :as => "producer"
+    it "automatically selects producers connected to dedicated ports" do
+        transform_producer_m = self.transform_producer_m
+        task_m = self.data_consumer_m.
+            use_frames('object' => 'object_global', 'world' => 'world_global').
+            transformer { frames 'object_global', 'world_global' }
+        cmp_m.add transform_producer_m, as: 'producer'
+        cmp_m.add task_m, as: 'processor'
+        cmp_m.producer_child.transform_port.
+            connect_to cmp_m.processor_child.transform_samples_port
 
-            device_child.connect_to processor_child
-            producer_child.transform_port.connect_to processor_child.manual_transform_port
-        end
-
-        # This setup will check that:
-        # * the frame from 'device' is properly propagated to the "from" frame of
-        #   the producer through the processor
-        # * the "to" frame of the producer is propagated to the world frame of
-        #   the processor
-        # * the engine recognizes that the manually connected producer is all is
-        #   needed, and therefore requires no other static or dynamic frame
-        plan.add_mission(
-            mission = composition_m.
-                use(TestTransformer::Device.use_frames("dev" => "output_test")).
-                use(TestTransformer::ConfigurableTransformProducer.use_frames("to" => "global_output")).
-                use_deployments("configurable_transform_producer").
-                use_frames("output" => "global_output").
-                transformer { frames 'output_test', 'global_output' }.
-                as_plan)
-
-        verify_simple_setup(mission = mission.as_service)
-        execute do
-            device_task  = mission.task.device_child
-            process_task = mission.task.processor_child
-
-            producer_task = mission.task.producer_child
-            assert_equal "output_test", producer_task.orocos_task.from_frame
-            assert_equal "global_output", producer_task.orocos_task.to_frame
-            assert_equal "global_output", process_task.selected_frames["world"]
-        end
+        cmp = syskit_stub_and_deploy(cmp_m)
+        processor = cmp.processor_child
+        assert !cmp.processor_child.dynamic_transformations_port.connected?
     end
 
-    it "should accept being given services as producers" do
-        dev_m = Syskit::Device.new_submodel do
-            output_port 'trsf', 'base/samples/RigidBodyState'
+    it "accepts specific services as producers" do
+        srv_m = Syskit::DataService.new_submodel do
+            output_port 'transforms', 'base/samples/RigidBodyState'
         end
-        TestTransformer::ConfigurableTransformProducer.driver_for dev_m, :as => 'transformation'
-        dev = robot.device(dev_m, :as => 'device')
-        dev.period 0.1
-
-        req = TestTransformer::ConfigurableTransformProducer.
-                with_arguments('transformation_dev' => dev).
-                use_deployments('configurable_transform_producer').transformation_srv
-        req.dynamics.period 0.1
-
-        mission = simple_setup do
-            dynamic_transform req, "output_test" => "global_output"
+        multi_producer_m = transform_producer_m.new_submodel name: 'MultiProducer' do
+            output_port 'alternate_transforms', '/base/samples/RigidBodyState'
+            transformer do
+                transform_output 'alternate_transforms', 'alternate_object' => 'alternate_world'
+            end
         end
+        multi_producer_m.provides srv_m, as: 'test',
+            'transforms' => 'alternate_transforms'
 
-        execute do
-            device_task  = mission.device_child
-            process_task = mission.processor_child
-            producer_task = process_task.transformer_output_test2global_output_child
+        syskit_stub(multi_producer_m)
+        task_m = self.data_consumer_m.
+            use_frames('object' => 'object_global', 'world' => 'world_global').
+            transformer do
+                dynamic_transform multi_producer_m.test_srv,
+                    "object_global" => "world_global"
+            end
 
-            assert_connection_exists(producer_task, "transform", process_task, "dynamic_transformations")
-            assert_equal "output_test", producer_task.orocos_task.from_frame
-            assert_equal "global_output", producer_task.orocos_task.to_frame
-        end
+        task = syskit_stub_and_deploy(task_m)
+        producer = task.child_from_role("transformer_object_global2world_global")
+        assert_kind_of multi_producer_m, producer
+        assert producer.alternate_transforms_port.connected_to?(task.dynamic_transformations_port)
+        assert_equal Hash['alternate_object' => 'object_global', 'alternate_world' => 'world_global'],
+            producer.selected_frames
     end
 end
 

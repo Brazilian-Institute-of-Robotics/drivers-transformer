@@ -1,21 +1,32 @@
 require 'transformer/syskit/test'
 
 describe Transformer::TaskContextExtension do
+    attr_reader :task_m
+
     before do
-        Roby.app.using_task_library 'test_transformer'
-        ::Robot.logger.level = Logger::WARN
-        Syskit.conf.use_deployments_from "test_transformer"
+        Roby.app.import_types_from 'base'
+        Roby.app.import_types_from 'transformer'
+    end
+
+    subject do
+        Syskit::TaskContext.new_submodel do
+            output_port 'data', '/double'
+            output_port 'transform', '/base/samples/RigidBodyState'
+            transformer do
+                associate_frame_to_ports 'dev', 'data'
+                transform_output 'transform', 'from' => 'to'
+                max_latency 0.1
+            end
+        end.new
     end
 
     describe "#each_associated_port" do
         it "maps local names to global ones" do
-            task = TestTransformer::Device.new
-            task.select_frame('dev', 'test')
-            assert_equal [[task.data_port, 'test']], task.each_annotated_port.to_a
+            subject.select_frame('dev', 'test')
+            assert_equal [[subject.data_port, 'test']], subject.each_annotated_port.to_a
         end
         it "yields ports for which the frame is not yet selected" do
-            task = TestTransformer::Device.new
-            assert_equal [[task.data_port, nil]], task.each_annotated_port.to_a
+            assert_equal [[subject.data_port, nil]], subject.each_annotated_port.to_a
         end
     end
     describe "#each_transform_port" do
@@ -31,32 +42,28 @@ describe Transformer::TaskContextExtension do
             end
         end
         it "maps local names to global ones" do
-            task = TestTransformer::ConfigurableTransformProducer.new
-            task.select_frame('from', 'test')
-            transform_ports = task.each_transform_port.to_a
-            verify_each_transform_port([[task.transform_port, 'test', nil]], transform_ports)
+            subject.select_frame('from', 'test_from')
+            subject.select_frame('to', 'test_to')
+            transform_ports = subject.each_transform_port.to_a
+            verify_each_transform_port([[subject.transform_port, 'test_from', 'test_to']], transform_ports)
         end
         it "yields ports for which both transform frame are not yet selected" do
-            task = TestTransformer::ConfigurableTransformProducer.new
-            transform_ports = task.each_transform_port.to_a
-            verify_each_transform_port([[task.transform_port, nil, nil]], transform_ports)
+            transform_ports = subject.each_transform_port.to_a
+            verify_each_transform_port([[subject.transform_port, nil, nil]], transform_ports)
         end
     end
     describe "#each_transform_output" do
         it "returns nil frames if they are not selected" do
-            task = TestTransformer::ConfigurableTransformProducer.new
-            assert_equal [[task.transform_port, nil, nil]], task.each_transform_output.to_a
+            assert_equal [[subject.transform_port, nil, nil]], subject.each_transform_output.to_a
         end
         it "returns silently if there is no transformer model" do
-            task = TestTransformer::ConfigurableTransformProducer.new
-            flexmock(task.model).should_receive(:transformer).once
-            assert_equal [], task.each_transform_output.to_a
+            flexmock(subject.model).should_receive(:transformer).once
+            assert_equal [], subject.each_transform_output.to_a
         end
     end
     describe "#find_port_for_transform" do
         it "returns a suitable port if there is one" do
-            task = TestTransformer::ConfigurableTransformProducer.new
-            assert_equal task.transform_port, task.find_port_for_transform('from', 'to')
+            assert_equal subject.transform_port, subject.find_port_for_transform('from', 'to')
         end
     end
 end

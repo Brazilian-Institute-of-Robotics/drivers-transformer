@@ -97,12 +97,9 @@ module Transformer
             producer_task.transformer.merge(manager.conf)
             propagate_local_transformer_configuration(producer_task)
 
-            Transformer.debug do
-                Transformer.debug "instanciated #{producer_task} for #{task}"
-                break
-            end
-
+            Transformer.debug { "instanciated #{producer_task} for #{task}" }
             transformations.each do |dyn|
+                Transformer.debug { "adding #{producer_task} as child transformer_#{dyn.from}2#{dyn.to} of #{task}" }
                 task.depends_on(producer_task, :role => "transformer_#{dyn.from}2#{dyn.to}")
 
                 out_port = producer.find_port_for_transform(dyn.from, dyn.to)
@@ -199,7 +196,7 @@ module Transformer
                         info = Types::Transformer::PortFrameAssociation.new(
                             :task => task_name, :port => port.name, :frame => selected_frame)
                         state.port_frame_associations << info
-                    else
+                    elsif Syskit.conf.transformer_warn_about_unset_frames?
                         Transformer.warn "no frame selected for #{frame_name} on #{task}. This is harmless for the network to run, but will make the display of #{port.name} \"in the right frame\" impossible"
                     end
                 end
@@ -213,7 +210,7 @@ module Transformer
                             :task => task_name, :port => port.name,
                             :from_frame => from, :to_frame => to)
                         state.port_transformation_associations << info
-                    else
+                    elsif Syskit.conf.transformer_warn_about_unset_frames?
                         Transformer.warn "no frame selected for #{transform.to} on #{task}. This is harmless for the network to run, but might remove some options during display"
                     end
                 end

@@ -1,62 +1,80 @@
 require 'transformer/syskit/test'
 
 describe Transformer do
-    include Transformer::SyskitPlugin::SelfTest
-
-    before do
-        Roby.app.using_task_library 'test_transformer'
-        ::Robot.logger.level = Logger::WARN
-        Syskit.conf.use_deployments_from "test_transformer"
-    end
-
-    def test_it_detects_conflicts_between_frame_selection_and_device_definition
-        dev_m = Syskit::Device.new_submodel do
-            output_port 'trsf', 'base/samples/RigidBodyState'
+    describe "the handling of devices" do
+        attr_reader :dev_m, :task_m
+        before do
+            Roby.app.import_types_from 'base'
+            Roby.app.import_types_from 'transformer'
         end
-        TestTransformer::ConfigurableTransformProducer.driver_for dev_m, :as => 'transformation'
-        dev = robot.device(dev_m, :as => 'device').
-            frame_transform('test_from' => 'test_to').
-            period(0.1)
 
-        req = dev.to_instance_requirements.
-            use_deployments('configurable_transform_producer').
-            use_frames('from' => 'other_from')
+        it "detects conflicts between the frame selection on the task and on the device" do
+            dev_m = Syskit::Device.new_submodel do
+                output_port 'trsf', 'base/samples/RigidBodyState'
+            end
+            task_m = Syskit::TaskContext.new_submodel do
+                output_port 'transform', 'base/samples/RigidBodyState'
+                driver_for dev_m, as: 'test'
+                transformer do
+                    transform_output 'transform', 'from' => 'to'
+                    max_latency 0.1
+                end
+            end
+            dev = robot.device(dev_m, :as => 'device').
+                frame_transform('test_from' => 'test_to').
+                period(0.1)
 
-        plan.add_mission(mission = req.as_plan)
-        mission = mission.as_service
+            req = task_m.
+                use_frames('from' => 'other_from').
+                with_arguments('test_dev' => dev)
 
-        inhibit_fatal_messages do
-            assert_raises(Transformer::FrameSelectionConflict) do
-                deploy(mission)
+            inhibit_fatal_messages do
+                assert_raises(Transformer::FrameSelectionConflict) do
+                    syskit_stub_and_deploy(req)
+                end
             end
         end
-    end
 
-    def test_link_task_frame_to_device_frame_using_frame
-        device_m = Syskit::Device.new_submodel do
-            output_port "data", "test_transformer/Result"
-        end
-        TestTransformer::BasicBehaviour.driver_for device_m, :as => 'driver'
-        dev = robot.device(device_m, :as => 'dev').frame('test_frame')
-        plan.add_mission(
-            mission = TestTransformer::BasicBehaviour.with_arguments("driver_dev" => dev).as_plan)
-        mission = mission.as_service
-        deploy(mission, :validate_network => false)
-        assert_equal "test_frame", mission.selected_frames['output']
-    end
+        it "links the task and device frames through transform ports" do
+            dev_m = Syskit::Device.new_submodel do
+                output_port 'trsf', 'base/samples/RigidBodyState'
+            end
+            task_m = Syskit::TaskContext.new_submodel do
+                output_port 'transform', 'base/samples/RigidBodyState'
+                driver_for dev_m, as: 'test'
+                transformer do
+                    transform_output 'transform', 'from' => 'to'
+                    max_latency 0.1
+                end
+            end
+            dev = robot.device(dev_m, :as => 'device').
+                frame_transform('test_from' => 'test_to').
+                period(0.1)
 
-    def test_link_task_frame_to_device_frame_using_transform
-        device_m = Syskit::Device.new_submodel do
-            output_port "data", "base/samples/RigidBodyState"
+            task = syskit_stub_and_deploy(task_m.with_arguments('test_dev' => dev))
+            assert_equal Hash['from' => 'test_from', 'to' => 'test_to'],
+                task.selected_frames
         end
-        TestTransformer::ConfigurableTransformProducer.driver_for device_m, :as => 'driver'
-        dev = robot.device(device_m, :as => 'dev').frame_transform('test_source' => 'test_target')
-        plan.add_mission(
-            mission = TestTransformer::ConfigurableTransformProducer.with_arguments("driver_dev" => dev).use_deployments('configurable_transform_producer').as_plan)
-        mission = mission.as_service
-        deploy(mission, :validate_network => false)
-        assert_equal "test_source", mission.selected_frames['from']
-        assert_equal "test_target", mission.selected_frames['to']
+
+        it "links the task and device frames through data ports" do
+            dev_m = Syskit::Device.new_submodel do
+                output_port 'samples', '/double'
+            end
+            task_m = Syskit::TaskContext.new_submodel do
+                output_port 'samples', '/double'
+                driver_for dev_m, as: 'test'
+                transformer do
+                    associate_frame_to_ports 'frame', 'samples'
+                    max_latency 0.1
+                end
+            end
+            dev = robot.device(dev_m, as: 'device').
+                frame('test').period(0.1)
+
+            task = syskit_stub_and_deploy(task_m.with_arguments('test_dev' => dev))
+            assert_equal Hash['frame' => 'test'],
+                task.selected_frames
+        end
     end
 end
 

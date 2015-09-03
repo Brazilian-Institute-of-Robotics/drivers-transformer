@@ -5,7 +5,7 @@ module Transformer
     module ProfileExtension
         # This is a normal transformer configuration with only a few added
         # tweaks
-        class Configuration < Transformer::Configuration
+        class Configuration < SyskitConfiguration
             attr_accessor :profile
             def initialize(profile)
                 @profile = profile

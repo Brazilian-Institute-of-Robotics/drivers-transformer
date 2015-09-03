@@ -1,30 +1,31 @@
 require 'transformer/syskit/test'
 
 describe Transformer::CompositionExtension do
+    attr_reader :cmp_m, :task_m
     before do
-        Roby.app.using_task_library 'test_transformer'
-        ::Robot.logger.level = Logger::WARN
-        Syskit.conf.use_deployments_from "test_transformer"
+        Roby.app.import_types_from 'base'
+        @task_m = Syskit::TaskContext.new_submodel do
+            output_port 'transform', '/base/samples/RigidBodyState'
+            transformer do
+                transform_output 'transform', 'object' => 'world'
+            end
+        end
+
+        @cmp_m = Syskit::Composition.new_submodel
+        cmp_m.add task_m, as: 'producer'
+        cmp_m.export cmp_m.producer_child.transform_port
     end
 
     describe "#each_transform_output" do
         it "returns nil frames if they are not selected" do
-            cmp_m = Syskit::Composition.new_submodel do
-                add TestTransformer::ConfigurableTransformProducer, :as => 'producer'
-                export producer_child.transform_port
-            end
             task = cmp_m.instanciate(plan)
             assert_equal [[task.transform_port, nil, nil]], task.each_transform_output.to_a
         end
     end
     describe "#find_port_for_transform" do
         it "returns a suitable port if there is one" do
-            cmp_m = Syskit::Composition.new_submodel do
-                add TestTransformer::ConfigurableTransformProducer, :as => 'producer'
-                export producer_child.transform_port
-            end
             task = cmp_m.instanciate(plan)
-            assert_equal task.transform_port, task.find_port_for_transform('from', 'to')
+            assert_equal [[task.transform_port, nil, nil]], task.each_transform_output.to_a
         end
     end
 end

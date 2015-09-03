@@ -14,7 +14,7 @@ module Transformer
         attr_writer :transformer
 
         def transformer
-            @transformer ||= Transformer::Configuration.new
+            @transformer ||= SyskitConfiguration.new
             if block_given?
                 @transformer.instance_eval(&proc)
                 return self
