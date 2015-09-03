@@ -156,17 +156,15 @@ module Transformer
         # property exists to change it) and 'global' is not its hardcoded value.
         def select_frames(selection)
             return if !(tr = model.transformer)
+            selection = selection.find_all { |local_frame, _| tr.has_frame?(local_frame) }
             selection.each do |local_frame, global_frame|
                 # If the frame is not configurable, raise
                 if tr.static?(local_frame) && local_frame != global_frame
                     raise StaticFrameChangeError.new(self, local_frame, global_frame), "cannot select #{global_frame} for the local frame #{local_frame} in #{self}, as the component does not support configuring that frame"
                 end
             end
-
-            selection.each do |name, selected_frame|
-                if tr.has_frame?(name)
-                    select_frame(name, selected_frame, validate: false)
-                end
+            selection.each do |local_frame, global_frame|
+                select_frame(local_frame, global_frame, validate: false)
             end
         end
 
