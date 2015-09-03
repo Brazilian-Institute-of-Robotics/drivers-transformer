@@ -418,18 +418,17 @@ module Transformer
                 end
             end
 
-            if new_selections.empty?
-                if current_selection.empty?
-                    debug { "no frames selected for #{task}" }
-                    task.select_frames(static_frames)
-                else
+            result =
+                if new_selections.empty?
                     debug { "selecting frame mappings #{current_selection} on #{task}, propagated from its parents" }
-                    task.select_frames(current_selection.merge(static_frames))
+                    current_selection
+                else
+                    debug { "adding frame selection from #{task}: #{new_selections}" }
+                    new_selections
                 end
-            else
-                debug { "adding frame selection from #{task}: #{new_selections}" }
-                task.select_frames(new_selections.merge(static_frames))
-            end
+            result = result.merge(static_frames)
+            task.select_frames(result)
+            result
         end
 
         def self.initialize_transform_producers(task, current_selection)

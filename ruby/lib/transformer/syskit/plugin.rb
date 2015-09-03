@@ -239,10 +239,12 @@ module Transformer
         end
 
         def self.propagate_local_transformer_configuration(root_task)
-            FramePropagation.initialize_selected_frames(root_task, Hash.new)
+            selected_frames = Hash.new
+            selected_frames[root_task] = FramePropagation.initialize_selected_frames(root_task, Hash.new)
             FramePropagation.initialize_transform_producers(root_task, Transformer::Configuration.new)
             Roby::TaskStructure::Hierarchy.each_bfs(root_task, BGL::Graph::ALL) do |from, to, info|
-                FramePropagation.initialize_selected_frames(to, from.selected_frames)
+                selected_frames[to] = FramePropagation.initialize_selected_frames(
+                    to, selected_frames[from])
                 FramePropagation.initialize_transform_producers(to, from.transformer)
             end
         end
