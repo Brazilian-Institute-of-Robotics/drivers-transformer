@@ -1,7 +1,7 @@
 module Transformer
     module PlanExtension
         attribute(:transformer_configuration_state) do
-            [Time.now, Types::Transformer::ConfigurationState.new]
+            [Time.now, Types.transformer.ConfigurationState.new]
         end
 
         # Propagates the transformer_configuration_state changes to the underlying plan
