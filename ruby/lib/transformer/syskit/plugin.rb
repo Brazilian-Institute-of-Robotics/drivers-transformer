@@ -1,7 +1,6 @@
 module Transformer
     module SyskitPlugin
-        def self.compute_required_transformations(manager, task, options = Hash.new)
-            options = Kernel.validate_options options, :validate_network => true
+        def self.compute_required_transformations(manager, task)
             static_transforms  = Hash.new
             dynamic_transforms = Hash.new { |h, k| h[k] = Array.new }
 
@@ -16,9 +15,6 @@ module Transformer
                 if !from || !to
                     # This is validated in #validate_generated_network. Just
                     # ignore here.
-                    #
-                    # We do that so that the :validate_network option to
-                    # Engine#instanciate applies
                     next
                 end
                 
@@ -53,12 +49,8 @@ module Transformer
                     begin
                         manager.transformation_chain(from, to, self_producers)
                     rescue Exception => e
-                        if options[:validate_network]
-                            raise InvalidChain.new(task, trsf.from, from, trsf.to, to, e),
-                                "cannot find a transformation chain to produce #{from} => #{to} for #{task} (task-local frames: #{trsf.from} => #{trsf.to}): #{e.message}", e.backtrace
-                        else
-                            next
-                        end
+                        raise InvalidChain.new(task, trsf.from, from, trsf.to, to, e),
+                            "cannot find a transformation chain to produce #{from} => #{to} for #{task} (task-local frames: #{trsf.from} => #{trsf.to}): #{e.message}", e.backtrace
                     end
                 Transformer.log_pp(:debug, chain)
 
@@ -146,8 +138,7 @@ module Transformer
         #
         # @return [Boolean] true if producers have been added to the plan and
         #   false otherwise
-        def self.add_needed_producers(tasks, instanciated_producers, options = Hash.new)
-            options = Kernel.validate_options options, :validate_network => true
+        def self.add_needed_producers(tasks, instanciated_producers)
             has_new_producers = false
             tasks.each do |task|
                 tr_config = task.transformer
@@ -155,7 +146,7 @@ module Transformer
 
                 Transformer.debug { "computing needed static and dynamic transformations for #{task}" }
 
-                static_transforms, dynamic_transforms = compute_required_transformations(tr_manager, task, :validate_network => options[:validate_network])
+                static_transforms, dynamic_transforms = compute_required_transformations(tr_manager, task)
                 task.static_transforms = static_transforms.values
                 dynamic_transforms.each do |producer_model, transformations|
                     producer_tasks = instanciated_producers[producer_model]
@@ -262,36 +253,7 @@ module Transformer
         # with its connections
         #
         # It only checks its inputs, as it is meant to iterate over all tasks
-        def self.validate_frame_selection_consistency_through_inputs(task)
-            task.each_annotated_port do |task_port, task_frame|
-                next if !task_port.input? || !task_frame
-                task_port.each_frame_of_connected_ports do |other_port, other_frame|
-                    if other_frame != task_frame
-                        raise FrameSelectionConflict.new(
-                            task,
-                            task.model.find_frame_of_port(task_port),
-                            task_frame,
-                            other_frame)
-                    end
-                end
-            end
-            task.each_transform_port do |task_port, task_transform|
-                next if !task_port.input?
-                task_port.each_transform_of_connected_ports do |other_port, other_transform|
-                    if other_transform.from && task_transform.from && other_transform.from != task_transform.from
-                        task_local_name = task.model.find_transform_of_port(task_port).from
-                        raise FrameSelectionConflict.new(task, task_local_name,
-                                                         task_transform.from, other_transform.from)
-                    elsif other_transform.to && task_transform.to && other_transform.to != task_transform.to
-                        task_local_name = task.model.find_transform_of_port(task_port).to
-                        raise FrameSelectionConflict.new(task, task_local_name,
-                                                         task_transform.to, other_transform.to)
-                    end
-                end
-            end
-        end
-
-        def self.instanciated_network_postprocessing_hook(engine, plan, validate)
+        def self.instanciated_network_postprocessing_hook(engine, plan)
             needed = true
             all_producers = Hash.new { |h, k| h[k] = Array.new }
             while needed
@@ -301,18 +263,7 @@ module Transformer
 
                 # Now find out the frame producers that each task needs, and add them to
                 # the graph
-                needed = add_needed_producers(transformer_tasks, all_producers, validate_network: engine.options[:validate_abstract_network])
-            end
-
-            # We must now validate. The frame propagation algorithm does
-            # some validation, but also tries to do as little work as
-            # possible and therefore will miss some errors
-            if engine.options[:validate_abstract_network]
-                transformer_tasks = plan.find_local_tasks(Syskit::TaskContext).
-                    find_all { |task| task.model.transformer }
-                transformer_tasks.each do |task|
-                    validate_frame_selection_consistency_through_inputs(task)
-                end
+                needed = add_needed_producers(transformer_tasks, all_producers)
             end
         end
 
@@ -357,9 +308,9 @@ module Transformer
                 end
             end
 
-            Syskit::NetworkGeneration::Engine.register_instanciated_network_postprocessing do |engine, plan, validate|
+            Syskit::NetworkGeneration::Engine.register_instanciated_network_postprocessing do |engine, plan|
                 if Syskit.conf.transformer_enabled?
-                    instanciated_network_postprocessing_hook(engine, plan, validate)
+                    instanciated_network_postprocessing_hook(engine, plan)
                 end
             end
 
@@ -400,8 +351,8 @@ module Transformer
             Syskit::InstanceRequirements.class_eval do
                 prepend Transformer::InstanceRequirementsExtension
             end
-            Syskit::NetworkGeneration::Engine.class_eval do
-                prepend Transformer::EngineExtension
+            Syskit::NetworkGeneration::SystemNetworkGenerator.class_eval do
+                prepend Transformer::SystemNetworkGeneratorExtension
             end
             Syskit::Actions::Profile.class_eval do
                 prepend Transformer::ProfileExtension
