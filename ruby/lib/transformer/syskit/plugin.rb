@@ -344,6 +344,9 @@ module Transformer
             Syskit::Robot::DeviceInstance.class_eval do
                 prepend Transformer::DeviceExtension
             end
+            Syskit::Robot::MasterDeviceInstance.class_eval do
+                prepend Transformer::MasterDeviceExtension
+            end
             Syskit::Graphviz.class_eval do
                 prepend Transformer::GraphvizExtension
             end
