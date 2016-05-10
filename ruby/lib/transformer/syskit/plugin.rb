@@ -231,14 +231,14 @@ module Transformer
 
             def handle_start_vertex(root_task)
                 @selected_frames = Hash.new
-                selected_frames[root_task] = FramePropagation.initialize_selected_frames(root_task, Hash.new)
                 FramePropagation.initialize_transform_producers(root_task, Transformer::Configuration.new)
+                selected_frames[root_task] = FramePropagation.initialize_selected_frames(root_task, Hash.new)
             end
 
             def handle_examine_edge(from, to)
+                FramePropagation.initialize_transform_producers(to, from.transformer)
                 selected_frames[to] = FramePropagation.initialize_selected_frames(
                     to, selected_frames[from])
-                FramePropagation.initialize_transform_producers(to, from.transformer)
             end
         end
 

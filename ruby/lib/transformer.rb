@@ -261,6 +261,11 @@ module Transformer
             conf.load(*config_file)
         end
 
+        # Validate that the given frame is valid
+        def validate_frame(frame_name)
+            checker.check_frame(frame_name, conf.frames)
+        end
+
         # Returns the set of transformations in +transforms+ where
         #
         # * +node+ is a starting point 
@@ -287,8 +292,8 @@ module Transformer
         def transformation_chain(from, to, additional_producers = Hash.new)
             from = from.to_s
             to = to.to_s
-            checker.check_frame(from, conf.frames)
-            checker.check_frame(to, conf.frames)
+            validate_frame(from)
+            validate_frame(to)
 
             if from == to
                 return TransformChain.new(from)
@@ -483,6 +488,13 @@ module Transformer
         # True if +frame+ is a defined frame
         def has_frame?(frame)
             self.frames.include?(frame.to_s)
+        end
+
+        # Verify that a given frame is known to self
+        def validate_frame(frame)
+            if !has_frame?(frame)
+                raise InvalidConfiguration, "unknown frame #{frame}, known frames: #{frames.to_a.sort.join(", ")}"
+            end
         end
 
         def empty?

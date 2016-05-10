@@ -340,8 +340,13 @@ module Transformer
         #   frame to a global frame name
         def self.initial_frame_selection_from_device(task, dev)
             tr = task.model.transformer
-            selected_frame = dev.frame
-            selected_transform = dev.frame_transform
+            if selected_frame = dev.frame
+                task.transformer.validate_frame(selected_frame)
+            end
+            if selected_transform = dev.frame_transform
+                task.transformer.validate_frame(selected_transform.from)
+                task.transformer.validate_frame(selected_transform.to)
+            end
 
             new_selections = Hash.new
             task.find_all_driver_services_for(dev).each do |srv|
@@ -424,6 +429,9 @@ module Transformer
                     current_selection
                 else
                     debug { "adding frame selection from #{task}: #{new_selections}" }
+                    new_selections.each_value do |selected_frame|
+                        task.transformer.validate_frame(selected_frame)
+                    end
                     new_selections
                 end
             result = result.merge(static_frames)
