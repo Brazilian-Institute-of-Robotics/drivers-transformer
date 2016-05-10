@@ -341,11 +341,17 @@ module Transformer
         def self.initial_frame_selection_from_device(task, dev)
             tr = task.model.transformer
             if selected_frame = dev.frame
-                task.transformer.validate_frame(selected_frame)
+                if !task.transformer.has_frame?(selected_frame)
+                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_frame} selected as reference frame for #{dev}"
+                end
             end
             if selected_transform = dev.frame_transform
-                task.transformer.validate_frame(selected_transform.from)
-                task.transformer.validate_frame(selected_transform.to)
+                if !task.transformer.has_frame?(selected_transform.from)
+                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_transform.from} selected as 'from' frame for #{dev}"
+                end
+                if !task.transformer.has_frame?(selected_transform.to)
+                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_transform.to} selected as 'to' frame for #{dev}"
+                end
             end
 
             new_selections = Hash.new
@@ -429,8 +435,10 @@ module Transformer
                     current_selection
                 else
                     debug { "adding frame selection from #{task}: #{new_selections}" }
-                    new_selections.each_value do |selected_frame|
-                        task.transformer.validate_frame(selected_frame)
+                    new_selections.each do |frame_name, selected_frame|
+                        if !task.transformer.has_frame?(selected_frame)
+                            raise InvalidConfiguration, "undefined frame #{selected_frame} selected for '#{frame_name}' in #{task}"
+                        end
                     end
                     new_selections
                 end
