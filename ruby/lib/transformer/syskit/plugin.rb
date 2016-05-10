@@ -361,6 +361,9 @@ module Transformer
             Syskit::Actions::Profile.class_eval do
                 prepend Transformer::ProfileExtension
             end
+            Syskit::Actions::Profile::RobotDefinition.class_eval do
+                prepend Transformer::ProfileRobotDefinitionExtension
+            end
         end
 
         def self.register
