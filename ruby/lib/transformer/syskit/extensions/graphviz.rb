@@ -2,14 +2,14 @@ module Transformer
     # Module used to add the 'transforms' annotations to the graph output
     module GraphvizExtension
         def frame_transform_id(task, from, to, prefix= "")
-            "frames_#{prefix}#{from.gsub(/[^\w]+/, '_')}_#{to.gsub(/[^\w]+/, '_')}_producer"
+            "frames_#{prefix}#{from}_#{to}_producer"
         end
 
         def add_frame_transform(task, from, to, prefix = "")
             producer = frame_transform_id(task, from, to, prefix)
             add_vertex(task, producer, "label=\"\",shape=circle")
-            add_edge(["frames_#{prefix}#{from.gsub(/[^\w]+/, '_')}", task], [producer, task], "dir=none")
-            add_edge([producer, task], ["frames_#{prefix}#{to.gsub(/[^\w]+/, '_')}", task], "")
+            add_edge(["frames_#{prefix}#{from}", task], [producer, task], "dir=none")
+            add_edge([producer, task], ["frames_#{prefix}#{to}", task], "")
             producer
         end
 
@@ -25,13 +25,12 @@ module Transformer
                     next if !selected_frame && !selected_transform
 
                     if selected_frame
-                        frame_id = "frames_#{dev.name}"
-                        add_vertex(device_task, frame_id, "label=\"dev(#{dev.name})=#{selected_frame}\",shape=ellipse")
+                        add_vertex(device_task, "frames_#{dev.name}", "label=\"dev(#{dev.name})=#{selected_frame}\",shape=ellipse")
                     end
                     if selected_transform
                         from, to = selected_transform.from, selected_transform.to
-                        add_vertex(device_task, "frames_dev_#{dev.name}#{from.gsub(/[^\w]+/, '_')}", "label=\"dev(#{dev.name}).from=#{from}\",shape=ellipse#{",color=red" if !from}")
-                        add_vertex(device_task, "frames_dev_#{dev.name}#{to.gsub(/[^\w]+/, '_')}", "label=\"dev(#{dev.name}).to=#{to}\",shape=ellipse#{",color=red" if !from}")
+                        add_vertex(device_task, "frames_dev_#{dev.name}#{from}", "label=\"dev(#{dev.name}).from=#{from}\",shape=ellipse#{",color=red" if !from}")
+                        add_vertex(device_task, "frames_dev_#{dev.name}#{to}", "label=\"dev(#{dev.name}).to=#{to}\",shape=ellipse#{",color=red" if !from}")
                         transform_id = add_frame_transform(device_task, from, to, "dev_#{dev.name}")
                     end
 
