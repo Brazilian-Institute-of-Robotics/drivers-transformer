@@ -141,6 +141,7 @@ module Transformer
         def self.add_needed_producers(tasks, instanciated_producers)
             has_new_producers = false
             tasks.each do |task|
+                dependency_graph = task.relation_graph_for(Roby::TaskStructure::Dependency)
                 tr_config = task.transformer
                 tr_manager = Transformer::TransformationManager.new(tr_config)
 
@@ -152,7 +153,7 @@ module Transformer
                     producer_tasks = instanciated_producers[producer_model]
                     if !producer_tasks.empty?
                         is_recursive = producer_tasks.any? do |prod_task|
-                            prod_task == task || prod_task.reachable?(task, Roby::TaskStructure::Dependency)
+                            prod_task == task || dependency_graph.reachable?(prod_task, task)
                         end
                         if is_recursive
                             raise RecursiveProducer, "#{producer_model} requires some transformations (#{transformations.map { |tr| "#{tr.from}=>#{tr.to}" }}) that are produced by itself"
