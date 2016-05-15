@@ -50,17 +50,6 @@ module Transformer
                     child2parent = parent2model.inverse * child2model
                     joint2parent = child2parent * joint2child
 
-                    parent = "#{sdf.name}::#{parent.name}"
-                    child  = "#{sdf.name}::#{child.name}"
-                    joint_pre  = "#{sdf.name}::#{j.name}_pre"
-                    joint_post = "#{sdf.name}::#{j.name}_post"
-                    register_joint(joint_post, joint_pre, j)
-                    static_transform(joint2child, joint_post => child)
-                    static_transform(joint2parent, joint_pre => parent)
-                    if producer_resolver && (p = producer_resolver.call(j))
-                        dynamic_transform p, joint_post => joint_pre
-                    end
-
                     axis_limit = j.axis.limit
                     upper = axis_limit.upper || 0
                     lower = axis_limit.lower || 0
@@ -72,7 +61,23 @@ module Transformer
                         axis = joint2model.rotation.inverse * axis
                     end
                     post2pre = j.transform_for((upper + lower) / 2, axis)
-                    example_transform post2pre, joint_post => joint_pre
+
+                    parent = "#{sdf.name}::#{parent.name}"
+                    child  = "#{sdf.name}::#{child.name}"
+
+                    if upper != lower
+                        joint_pre  = "#{sdf.name}::#{j.name}_pre"
+                        joint_post = "#{sdf.name}::#{j.name}_post"
+                        register_joint(joint_post, joint_pre, j)
+                        static_transform(joint2child, joint_post => child)
+                        static_transform(joint2parent, joint_pre => parent)
+                        if producer_resolver && (p = producer_resolver.call(j))
+                            dynamic_transform p, joint_post => joint_pre
+                        end
+                        example_transform post2pre, joint_post => joint_pre
+                    else
+                        static_transform child2parent, child => parent
+                    end
                 end
 
                 root_links.each_value do |l|
