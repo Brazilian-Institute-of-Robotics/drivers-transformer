@@ -159,6 +159,9 @@ module Transformer
     # Exception raised during network generation if the system cannot find a
     # production chain for a transformation
     class InvalidChain < RuntimeError
+        # The transformer configuraiton
+        # @return [TransformationManager]
+        attr_reader :transformer
         # The task for which the transformation was being produced
         attr_reader :task
         # The task-local name for the source frame
@@ -172,9 +175,9 @@ module Transformer
         # The exception explaining the error
         attr_reader :reason
 
-        def initialize(task, task_from, from, task_to, to, reason)
-            @task, @task_from, @from, @task_to, @to, @reason =
-                task, task_from, from, task_to, to, reason
+        def initialize(transformer, task, task_from, from, task_to, to, reason)
+            @transformer, @task, @task_from, @from, @task_to, @to, @reason =
+                transformer, task, task_from, from, task_to, to, reason
         end
 
         def pretty_print(pp)
@@ -183,7 +186,12 @@ module Transformer
             pp.text "  in #{task}"
             pp.breakable
             pp.text "  (task-local: #{task_from} => #{task_to})"
-            pp.breakable
+            pp.nest(2) do
+                pp.breakable
+                pp.text "Transformer configuration:"
+                pp.breakable
+                transformer.conf.pretty_print(pp)
+            end
             reason.pretty_print(pp)
         end
     end

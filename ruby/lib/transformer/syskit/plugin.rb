@@ -49,7 +49,7 @@ module Transformer
                     begin
                         manager.transformation_chain(from, to, self_producers)
                     rescue Exception => e
-                        raise InvalidChain.new(task, trsf.from, from, trsf.to, to, e),
+                        raise InvalidChain.new(manager, task, trsf.from, from, trsf.to, to, e),
                             "cannot find a transformation chain to produce #{from} => #{to} for #{task} (task-local frames: #{trsf.from} => #{trsf.to}): #{e.message}", e.backtrace
                     end
                 Transformer.log_pp(:debug, chain)
