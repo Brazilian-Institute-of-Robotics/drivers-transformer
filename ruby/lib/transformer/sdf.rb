@@ -57,7 +57,7 @@ module Transformer
                     if j.axis.use_parent_model_frame?
                         # The axis is expressed in the parent model frame ...
                         # Convert to joint frame
-                        joint2model = (joint2child * child2model)
+                        joint2model = child2model * joint2child
                         axis = joint2model.rotation.inverse * axis
                     end
                     post2pre = j.transform_for((upper + lower) / 2, axis)
