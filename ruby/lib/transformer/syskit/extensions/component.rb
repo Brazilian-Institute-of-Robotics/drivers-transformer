@@ -49,13 +49,11 @@ module Transformer
         # The frame names are actual frame names, not task-local ones
         def find_transformation_input(from, to)
             return if !(tr = model.transformer)
-            tr.each_transform_port do |port, transform|
-                if port.kind_of?(Orocos::Spec::InputPort)
-                    port_from = selected_frames[transform.from]
-                    port_to   = selected_frames[transform.to]
-                    if port_from == from && port_to == to
-                        return port
-                    end
+            tr.each_transform_input do |port, transform|
+                port_from = selected_frames[transform.from]
+                port_to   = selected_frames[transform.to]
+                if port_from == from && port_to == to
+                    return port
                 end
             end
             nil

@@ -203,15 +203,7 @@ module Transformer
                     done_port_info(task, port.name)
                 end
             end
-            tr.each_transform_output do |port, transform|
-                from = task.selected_frames[transform.from]
-                to   = task.selected_frames[transform.to]
-                add_port_info(task, port.name, TransformAnnotation.new(task, transform.from, from, transform.to, to))
-                if from && to
-                    done_port_info(task, port.name)
-                end
-            end
-            tr.each_transform_input do |port, transform|
+            tr.each_transform_port do |port, transform|
                 from = task.selected_frames[transform.from]
                 to   = task.selected_frames[transform.to]
                 add_port_info(task, port.name, TransformAnnotation.new(task, transform.from, from, transform.to, to))

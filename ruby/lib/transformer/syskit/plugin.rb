@@ -21,8 +21,8 @@ module Transformer
                 # Register transformation producers that are connected to
                 # some of our transformation input ports
                 self_producers = Hash.new
-                tr.each_transform_port do |port, transform|
-                    if port.kind_of?(Orocos::Spec::InputPort) && task.connected?(port.name)
+                tr.each_transform_input do |port, transform|
+                    if task.connected?(port.name)
                         port_from = task.selected_frames[transform.from]
                         port_to   = task.selected_frames[transform.to]
                         if port_from && port_to
@@ -192,9 +192,7 @@ module Transformer
                         Transformer.warn "no frame selected for #{frame_name} on #{task}. This is harmless for the network to run, but will make the display of #{port.name} \"in the right frame\" impossible"
                     end
                 end
-                tr.each_transform_port do |port, transform|
-                    next if port.kind_of?(Orocos::Spec::InputPort)
-
+                tr.each_transform_output do |port, transform|
                     from = task.selected_frames[transform.from]
                     to   = task.selected_frames[transform.to]
                     if from && to
