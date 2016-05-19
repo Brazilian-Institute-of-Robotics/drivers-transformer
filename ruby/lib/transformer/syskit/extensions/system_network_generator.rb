@@ -29,12 +29,10 @@ module Transformer
             # We must now validate. The frame propagation algorithm does
             # some validation, but also tries to do as little work as
             # possible and therefore will miss some errors
-            if engine.options[:validate_abstract_network]
-                transformer_tasks = plan.find_local_tasks(Syskit::TaskContext).
-                    find_all { |task| task.model.transformer }
-                transformer_tasks.each do |task|
-                    SystemNetworkGeneratorExtension.validate_frame_selection_consistency_through_inputs(task)
-                end
+            transformer_tasks = plan.find_local_tasks(Syskit::TaskContext).
+                find_all { |task| task.model.transformer }
+            transformer_tasks.each do |task|
+                SystemNetworkGeneratorExtension.validate_frame_selection_consistency_through_inputs(task)
             end
         end
 
