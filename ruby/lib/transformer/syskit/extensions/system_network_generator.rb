@@ -3,7 +3,7 @@ module Transformer
     module SystemNetworkGeneratorExtension
         # During network validation, checks that all required frames have been
         # configured
-        def validate_generated_network(plan, options)
+        def validate_generated_network
             super
 
             if Syskit.conf.transformer_enabled?
@@ -26,13 +26,15 @@ module Transformer
         def validate_abstract_network
             super
 
-            # We must now validate. The frame propagation algorithm does
-            # some validation, but also tries to do as little work as
-            # possible and therefore will miss some errors
-            transformer_tasks = plan.find_local_tasks(Syskit::TaskContext).
-                find_all { |task| task.model.transformer }
-            transformer_tasks.each do |task|
-                SystemNetworkGeneratorExtension.validate_frame_selection_consistency_through_inputs(task)
+            if Syskit.conf.transformer_enabled?
+                # We must now validate. The frame propagation algorithm does
+                # some validation, but also tries to do as little work as
+                # possible and therefore will miss some errors
+                transformer_tasks = plan.find_local_tasks(Syskit::TaskContext).
+                    find_all { |task| task.model.transformer }
+                transformer_tasks.each do |task|
+                    SystemNetworkGeneratorExtension.validate_frame_selection_consistency_through_inputs(task)
+                end
             end
         end
 
