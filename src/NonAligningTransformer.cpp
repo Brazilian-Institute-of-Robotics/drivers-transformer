@@ -1,5 +1,5 @@
 #include "NonAligningTransformer.hpp"
-#include <base/logging.h>
+#include <base-logging/Logging.hpp>
 
 transformer::NonAlignedDynamicTransformationElement::NonAlignedDynamicTransformationElement(const std::string& sourceFrame, const std::string& targetFrame): TransformationElement(sourceFrame, targetFrame)
 {

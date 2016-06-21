@@ -3,11 +3,11 @@
 
 #include <Eigen/Geometry>
 #include <string>
-#include <base/time.h>
+#include <base/Time.hpp>
 #include <aggregator/StreamAligner.hpp>
 #include <map>
 #include <boost/bind.hpp>
-#include <base/samples/rigid_body_state.h>
+#include <base/samples/RigidBodyState.hpp>
 #include "TransformationStatus.hpp"
 
 namespace transformer {
