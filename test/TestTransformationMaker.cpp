@@ -8,7 +8,7 @@
 
 #include <Eigen/Geometry>
 #include <transformer/Transformer.hpp>
-#include <base/samples/laser_scan.h>
+#include <base/samples/LaserScan.hpp>
 #include <Eigen/SVD>
 
 using namespace std;
