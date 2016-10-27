@@ -498,8 +498,8 @@ module Transformer
         # @param [Configuration] conf
         # @return self
         def merge(conf)
-            transforms.merge!(conf.transforms.map_value { |_, v| v.dup })
-            example_transforms.merge!(conf.example_transforms.map_value { |_, v| v.dup })
+            transforms.merge!(conf.transforms)
+            example_transforms.merge!(conf.example_transforms)
             @frames |= conf.frames
             self
         end
@@ -547,6 +547,7 @@ module Transformer
 	    if tr.from == tr.to
 		raise ArgumentError, "trying to register a transformation from #{tr.from} onto itself"
 	    end
+            tr.freeze
             transforms[[tr.from, tr.to]] = tr
 	end
 
@@ -559,6 +560,7 @@ module Transformer
 	    if tr.from == tr.to
 		raise ArgumentError, "trying to register a transformation from #{tr.from} onto itself"
 	    end
+            tr.freeze
             example_transforms[[tr.from, tr.to]] = tr
         end
 

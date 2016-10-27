@@ -52,8 +52,10 @@ module Transformer
 
         def use_profile_transformer(profile, tags = Hash.new)
             tr = profile.transformer.dup
-            tr.each_dynamic_transform do |dyn|
+            profile.transformer.each_dynamic_transform do |dyn|
+                dyn = dyn.dup
                 dyn.producer = promote_requirements(profile, dyn.producer.to_instance_requirements, tags)
+                tr.add_transform(dyn)
             end
             tr.profile = self
             if has_transformer?
