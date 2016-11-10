@@ -296,7 +296,9 @@ module Transformer
             Roby::ExecutionEngine.add_propagation_handler(description: 'syskit-transformer transformer broadcaster start') do |plan|
 		if Syskit.conf.transformer_broadcaster_enabled?
 		    if !plan.execution_engine.quitting? && plan.find_tasks(OroGen::Transformer::Task).not_finished.empty?
-			plan.add_mission_task(OroGen::Transformer::Task)
+                        # The broadcaster will be updated at most once per
+                        # execution cycle
+                        plan.add_mission_task(OroGen::Transformer::Task.to_instance_requirements.period(0.05))
 		    end
 		end
             end
