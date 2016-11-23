@@ -199,6 +199,15 @@ module Transformer
         #
         # It can also be used to define transformer specifications on tasks
         # that don't have one (for instance to tie ports to frames)
-        def transformer(*args, &block); orogen_model.transformer(*args, &block) end
+        def transformer(&block)
+            extension = orogen_model.transformer ||
+                TransformerPlugin::Extension.new('transformer', orogen_model)
+            orogen_model.register_extension(extension)
+
+            if block
+                extension.instance_eval(&block)
+            end
+            extension
+        end
     end
 end
