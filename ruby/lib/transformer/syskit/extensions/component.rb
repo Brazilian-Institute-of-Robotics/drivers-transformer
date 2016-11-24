@@ -1,6 +1,9 @@
 module Transformer
     # Module used to extend objects of the class Syskit::Component
     module ComponentExtension
+        # The set of static transformations that should be provided to the
+        # component at configuration time
+        attribute(:static_transforms) { Array.new }
         attribute(:selected_frames) { Hash.new }
         attribute(:transformer) { Transformer::Configuration.new }
 

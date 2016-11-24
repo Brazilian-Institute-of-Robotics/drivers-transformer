@@ -24,10 +24,6 @@ module Transformer
             end
         end
 
-        # The set of static transformations that should be provided to the
-        # component at configuration time
-        attribute(:static_transforms) { Array.new }
-
         # Returns the transformation that this port provides, using the actual
         # frames (i.e. not the task-level frames, but the frames actually
         # selected).
