@@ -185,8 +185,8 @@ module Transformer
                 tr.each_annotated_port do |port, frame_name|
                     selected_frame = task.selected_frames[frame_name]
                     if selected_frame
-                        info = Types::Transformer::PortFrameAssociation.new(
-                            :task => task_name, :port => port.name, :frame => selected_frame)
+                        info = Types.transformer.PortFrameAssociation.new(
+                            task: task_name, port: port.name, frame: selected_frame)
                         state.port_frame_associations << info
                     elsif Syskit.conf.transformer_warn_about_unset_frames?
                         Transformer.warn "no frame selected for #{frame_name} on #{task}. This is harmless for the network to run, but will make the display of #{port.name} \"in the right frame\" impossible"
@@ -196,9 +196,9 @@ module Transformer
                     from = task.selected_frames[transform.from]
                     to   = task.selected_frames[transform.to]
                     if from && to
-                        info = Types::Transformer::PortTransformationAssociation.new(
-                            :task => task_name, :port => port.name,
-                            :from_frame => from, :to_frame => to)
+                        info = Types.transformer.PortTransformationAssociation.new(
+                            task: task_name, port: port.name,
+                            from_frame: from, to_frame: to)
                         state.port_transformation_associations << info
                     elsif Syskit.conf.transformer_warn_about_unset_frames?
                         Transformer.warn "no frame selected for #{transform.to} on #{task}. This is harmless for the network to run, but might remove some options during display"
@@ -207,7 +207,7 @@ module Transformer
             end
 
             state.static_transformations = static_transforms.values.map do |static|
-                rbs = Types::Base::Samples::RigidBodyState.invalid
+                rbs = Types.base.samples.RigidBodyState.invalid
                 rbs.sourceFrame = static.from
                 rbs.targetFrame = static.to
                 rbs.position = static.translation
