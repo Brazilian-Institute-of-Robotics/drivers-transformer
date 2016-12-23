@@ -176,7 +176,7 @@ module Transformer
 
                 if !static_transforms.empty? && orocos_task.has_property?(:static_transformations)
                     orocos_task.static_transformations = static_transforms.map do |trsf|
-                        rbs = Types::Base::Samples::RigidBodyState.new
+                        rbs = Types.base.samples.RigidBodyState.new
                         rbs.zero!
                         rbs.time = Time.now
                         rbs.sourceFrame = trsf.from
