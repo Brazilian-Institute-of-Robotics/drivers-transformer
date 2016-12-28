@@ -64,7 +64,7 @@ module Transformer
             @transformer = tr
         end
 
-        def use_profile(profile, tags = Hash.new)
+        def use_profile(profile, tags = Hash.new, transform_names: ->(name) { name })
             new_definitions = super
             if profile.has_transformer?
                 use_profile_transformer(profile, tags)
