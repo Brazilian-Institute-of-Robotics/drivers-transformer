@@ -334,15 +334,15 @@ module Transformer
             tr = task.model.transformer
             if selected_frame = dev.frame
                 if !task.transformer.has_frame?(selected_frame)
-                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_frame} selected as reference frame for #{dev}"
+                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_frame} selected as reference frame for #{dev}, known frames: #{task.transformer.frames.sort.join(", ")}"
                 end
             end
             if selected_transform = dev.frame_transform
                 if !task.transformer.has_frame?(selected_transform.from)
-                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_transform.from} selected as 'from' frame for #{dev}"
+                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_transform.from} selected as 'from' frame for #{dev}, known frames: #{task.transformer.frames.sort.join(", ")}"
                 end
                 if !task.transformer.has_frame?(selected_transform.to)
-                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_transform.to} selected as 'to' frame for #{dev}"
+                    raise Transformer::InvalidConfiguration, "undefined frame #{selected_transform.to} selected as 'to' frame for #{dev}, known frames: #{task.transformer.frames.sort.join(", ")}"
                 end
             end
 
@@ -429,7 +429,7 @@ module Transformer
                     debug { "adding frame selection from #{task}: #{new_selections}" }
                     new_selections.each do |frame_name, selected_frame|
                         if !task.transformer.has_frame?(selected_frame)
-                            raise InvalidConfiguration, "undefined frame #{selected_frame} selected for '#{frame_name}' in #{task}"
+                            raise InvalidConfiguration, "undefined frame #{selected_frame} selected for '#{frame_name}' in #{task}, known frames: #{task.transformer.frames.sort.join(", ")}"
                         end
                     end
                     new_selections
