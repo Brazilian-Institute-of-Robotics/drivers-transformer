@@ -65,7 +65,9 @@ module Transformer
                     parent = "#{sdf.name}::#{parent.name}"
                     child  = "#{sdf.name}::#{child.name}"
 
-                    if upper != lower
+                    if (j.type == 'fixed') || (upper == lower)
+                        static_transform child2parent, child => parent
+                    else
                         joint_pre  = "#{sdf.name}::#{j.name}_pre"
                         joint_post = "#{sdf.name}::#{j.name}_post"
                         register_joint(joint_post, joint_pre, j)
@@ -75,8 +77,6 @@ module Transformer
                             dynamic_transform p, joint_post => joint_pre
                         end
                         example_transform post2pre, joint_post => joint_pre
-                    else
-                        static_transform child2parent, child => parent
                     end
                 end
 
