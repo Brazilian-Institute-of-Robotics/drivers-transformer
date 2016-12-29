@@ -280,11 +280,10 @@ module Transformer
                 if app.testing?
                     Syskit.conf.transformer_warn_about_unset_frames = false
                 end
-
-                Roby.app.using_task_library('transformer')
             end
 
-            def self.require_config(app)
+            def self.require_models(app)
+                app.using_task_library('transformer')
                 Syskit.conf.use_deployment('transformer_broadcaster')
             end
         end
