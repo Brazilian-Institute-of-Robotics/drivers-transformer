@@ -16,6 +16,7 @@ end
 require 'transformer'
 require 'flexmock/minitest'
 require 'minitest/spec'
+require 'minitest/autorun'
 
 if ENV['TEST_ENABLE_PRY'] != '0'
     begin
@@ -36,32 +37,15 @@ module Transformer
     #   end
     #
     module SelfTest
-        if defined? FlexMock
-            include FlexMock::ArgumentTypes
-            include FlexMock::MockContainer
-        end
-
         def setup
             # Setup code for all the tests
         end
 
         def teardown
-            if defined? FlexMock
-                flexmock_teardown
-            end
             super
             # Teardown code for all the tests
         end
     end
-end
-
-# Workaround a problem with flexmock and minitest not being compatible with each
-# other (currently). See github.com/jimweirich/flexmock/issues/15.
-if defined?(FlexMock) && !FlexMock::TestUnitFrameworkAdapter.method_defined?(:assertions)
-    class FlexMock::TestUnitFrameworkAdapter
-        attr_accessor :assertions
-    end
-    FlexMock.framework_adapter.assertions = 0
 end
 
 Minitest::Test.include Transformer::SelfTest
