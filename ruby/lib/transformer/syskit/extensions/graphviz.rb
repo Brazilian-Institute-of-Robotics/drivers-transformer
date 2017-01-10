@@ -68,12 +68,16 @@ module Transformer
                     add_edge(["inputs", task], ["frames_#{frame}", task], "style=invis")
                     add_edge(["frames_#{frame}", task], ["outputs", task], "style=invis")
                 end
+                seen_transformations = Set.new
                 tr.each_transformation do |trsf|
-                    add_vertex(task, "frames_#{trsf.from}_#{trsf.to}_producer", "label=\"\",shape=circle")
-                    add_edge(["frames_#{trsf.from}", task], ["frames_#{trsf.from}_#{trsf.to}_producer", task], "dir=none")
-                    add_edge(["frames_#{trsf.from}_#{trsf.to}_producer", task], ["frames_#{trsf.to}", task], "")
+                    add_frame_transform(task, trsf.from, trsf.to)
+                    seen_transformations << [trsf.from, trsf.to]
                 end
                 tr.each_transform_port do |port, trsf|
+                    if !seen_transformations.include?([trsf.from, trsf.to])
+                        add_frame_transform(task, trsf.from, trsf.to)
+                        seen_transformations << [trsf.from, trsf.to]
+                    end
                     add_edge([port, task], ["frames_#{trsf.from}_#{trsf.to}_producer", task], "dir=none,constraint=false")
                 end
                 tr.each_annotated_port do |port, annotated_frame_name|
