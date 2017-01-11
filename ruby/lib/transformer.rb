@@ -60,6 +60,17 @@ module Transformer
         def pretty_print(pp)
             pp.text "#{from}2#{to}"
         end
+
+        def rename_frames(mapping)
+            result = dup
+            result.rename_frames!(mapping)
+            result
+        end
+
+        def rename_frames!(mapping)
+            @from = mapping[from] || from
+            @to   = mapping[to] || to
+        end
     end
 
     # Represents a frame transformation that has static value
@@ -489,6 +500,25 @@ module Transformer
 
         def empty?
             transforms.empty?
+        end
+
+        def rename_frames(mapping)
+            frames = Set.new
+            @frames.each { |f| frames << (mapping[f] || f) }
+
+            transforms = Hash.new
+            @transforms.each do |(from, to), tr|
+                transforms[[tr.from, tr.to]] = tr.rename_frames(mapping).freeze
+            end
+
+            example_transforms = Hash.new
+            @example_transforms.each do |(from, to), tr|
+                example_transforms[[tr.from, tr.to]] = tr.rename_frames(mapping).freeze
+            end
+
+            @frames = frames
+            @transforms = transforms
+            @example_transforms = example_transforms
         end
 
         # Adds the information from another Configuration object to self.
