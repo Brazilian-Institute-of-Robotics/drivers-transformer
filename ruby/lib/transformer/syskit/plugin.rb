@@ -271,7 +271,9 @@ module Transformer
                 find_all { |task| task.model.transformer }
 
             # And update the configuration state
-            update_configuration_state(plan.transformer_configuration_state[1], transformer_tasks)
+            if !Roby.app.testing?
+                update_configuration_state(plan.transformer_configuration_state[1], transformer_tasks)
+            end
             plan.transformer_configuration_state[0] = Time.now
         end
 
