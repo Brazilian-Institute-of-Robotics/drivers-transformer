@@ -84,12 +84,20 @@ module Transformer
                         add_frame_transform(task, trsf.from, trsf.to)
                         seen_transformations << [trsf.from, trsf.to]
                     end
-                    add_edge([port, task], ["frames_#{trsf.from}_#{trsf.to}_producer", task], "dir=none,constraint=false")
+                    add_edge_between_frame_and_port(task, port,  "frames_#{trsf.from}_#{trsf.to}_producer")
                 end
                 tr.each_annotated_port do |port, annotated_frame_name|
-                    add_edge([port, task], ["frames_#{annotated_frame_name}", task], "dir=none,constraint=false")
+                    add_edge_between_frame_and_port(task, port, "frames_#{annotated_frame_name}")
                 end
             end
+        end
+
+        def add_edge_between_frame_and_port(task, port, frame_name)
+            edge_from, edge_to = port, frame_name
+            if port.kind_of?(OroGen::Spec::OutputPort)
+                edge_from, edge_to = edge_to, edge_from
+            end
+            add_edge([edge_from, task], [edge_to, task], "dir=none")
         end
     end
 end
