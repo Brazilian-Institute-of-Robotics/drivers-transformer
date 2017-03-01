@@ -56,6 +56,8 @@ module Transformer
 
             # Add frame information stored in tasks (i.e. assigned frames)
             plan.find_local_tasks(Syskit::TaskContext).each do |task|
+                has_inputs  = task.each_input_port.find { true }
+                has_outputs = task.each_output_port.find { true }
                 tr = task.model.transformer
                 next if !tr
 
@@ -65,8 +67,12 @@ module Transformer
                                 ",color=red"
                             end
                     add_vertex(task, "frames_#{frame}", "label=\"#{frame}=#{task.selected_frames[frame]}\",shape=ellipse#{color}")
-                    add_edge(["inputs", task], ["frames_#{frame}", task], "style=invis")
-                    add_edge(["frames_#{frame}", task], ["outputs", task], "style=invis")
+                    if has_inputs
+                        add_edge(["inputs", task], ["frames_#{frame}", task], "style=invis")
+                    end
+                    if has_outputs
+                        add_edge(["frames_#{frame}", task], ["outputs", task], "style=invis")
+                    end
                 end
                 seen_transformations = Set.new
                 tr.each_transformation do |trsf|
