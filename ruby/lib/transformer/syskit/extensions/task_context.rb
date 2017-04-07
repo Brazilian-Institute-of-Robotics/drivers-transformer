@@ -169,13 +169,13 @@ module Transformer
             super if defined? super
             if tr = self.model.transformer
                 selected_frames.each do |local_frame, global_frame|
-                    if orocos_task.has_property?("#{local_frame}_frame")
+                    if has_property?("#{local_frame}_frame")
                         property("#{local_frame}_frame").write(global_frame)
                     end
                 end
 
-                if !static_transforms.empty? && orocos_task.has_property?(:static_transformations)
-                    orocos_task.static_transformations = static_transforms.map do |trsf|
+                if has_property?(:static_transformations)
+                    self.properties.static_transformations = static_transforms.map do |trsf|
                         rbs = Types.base.samples.RigidBodyState.new
                         rbs.zero!
                         rbs.time = Time.now

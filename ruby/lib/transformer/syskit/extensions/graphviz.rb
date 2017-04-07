@@ -56,6 +56,8 @@ module Transformer
 
             # Add frame information stored in tasks (i.e. assigned frames)
             plan.find_local_tasks(Syskit::TaskContext).each do |task|
+                has_inputs  = task.each_input_port.find { true }
+                has_outputs = task.each_output_port.find { true }
                 tr = task.model.transformer
                 next if !tr
 
@@ -65,8 +67,12 @@ module Transformer
                                 ",color=red"
                             end
                     add_vertex(task, "frames_#{frame}", "label=\"#{frame}=#{task.selected_frames[frame]}\",shape=ellipse#{color}")
-                    add_edge(["inputs", task], ["frames_#{frame}", task], "style=invis")
-                    add_edge(["frames_#{frame}", task], ["outputs", task], "style=invis")
+                    if has_inputs
+                        add_edge(["inputs", task], ["frames_#{frame}", task], "style=invis")
+                    end
+                    if has_outputs
+                        add_edge(["frames_#{frame}", task], ["outputs", task], "style=invis")
+                    end
                 end
                 seen_transformations = Set.new
                 tr.each_transformation do |trsf|
@@ -78,12 +84,20 @@ module Transformer
                         add_frame_transform(task, trsf.from, trsf.to)
                         seen_transformations << [trsf.from, trsf.to]
                     end
-                    add_edge([port, task], ["frames_#{trsf.from}_#{trsf.to}_producer", task], "dir=none,constraint=false")
+                    add_edge_between_frame_and_port(task, port,  "frames_#{trsf.from}_#{trsf.to}_producer")
                 end
                 tr.each_annotated_port do |port, annotated_frame_name|
-                    add_edge([port, task], ["frames_#{annotated_frame_name}", task], "dir=none,constraint=false")
+                    add_edge_between_frame_and_port(task, port, "frames_#{annotated_frame_name}")
                 end
             end
+        end
+
+        def add_edge_between_frame_and_port(task, port, frame_name)
+            edge_from, edge_to = port, frame_name
+            if port.kind_of?(OroGen::Spec::OutputPort)
+                edge_from, edge_to = edge_to, edge_from
+            end
+            add_edge([edge_from, task], [edge_to, task], "dir=none")
         end
     end
 end

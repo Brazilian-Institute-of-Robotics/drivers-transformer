@@ -89,6 +89,13 @@ module Transformer
             @rotation = old.rotation.dup
         end
 
+        def to_isometry
+            iso = Eigen::Isometry3.new
+            iso.translate(translation)
+            iso.rotate(rotation)
+            iso
+        end
+
         def pretty_print(pp)
             super
             pp.text ": static (xyz=#{translation.to_a.map(&:to_s).join(", ")} rpy=#{rotation.to_euler.to_a.map(&:to_s).join(", ")})"
@@ -155,6 +162,13 @@ module Transformer
                     cur_node = cur_node.parent
                 end
                 super(cur_node.frame, to)
+            end
+        end
+
+        def each
+            return enum_for(__method__) if !block_given?
+            links.zip(inversions).each do |link, inverse|
+                yield(link, inverse)
             end
         end
 
@@ -299,8 +313,22 @@ module Transformer
             return ret
         end
 
+        def resolve_static_chain(from, to)
+            chain = transformation_chain(from, to, only_static: true)
+            chain.each.inject(Eigen::Isometry3.Identity) do |a2b, (transform, inverse)|
+                if inverse
+                    c2b = transform.to_isometry
+                    b2c = c2b.inverse
+                else
+                    b2c = transform.to_isometry
+                end
+
+                b2c * a2b
+            end
+        end
+
         # Returns the shortest transformation chains that link +from+ to +to+
-        def transformation_chain(from, to, additional_producers = Hash.new)
+        def transformation_chain(from, to, additional_producers = Hash.new, only_static: false)
             from = from.to_s
             to = to.to_s
             validate_frame(from)
@@ -327,6 +355,8 @@ module Transformer
             end
 
             conf.transforms.each_value do |trsf|
+                next if only_static && trsf.kind_of?(DynamicTransform)
+
                 if !known_transforms.include?([trsf.from, trsf.to])
                     all_transforms[trsf.from] << [trsf, false]
                     all_transforms[trsf.to]   << [trsf, true]
