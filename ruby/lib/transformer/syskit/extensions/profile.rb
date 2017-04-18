@@ -65,11 +65,10 @@ module Transformer
         end
 
         def use_profile(profile, tags = Hash.new, transform_names: ->(name) { name })
-            new_definitions = super
             if profile.has_transformer?
                 use_profile_transformer(profile, tags)
             end
-            new_definitions
+            super
         end
 
         # Called by Profile to modify an instance requirement object w.r.t. the
